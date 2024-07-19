@@ -7,6 +7,6 @@ class DevelopmentConfig():
     MYSQL_PASSWORD = ''
     MYSQL_DB = 'esp'
 
-config = {
+Config = {
     'Development' :  DevelopmentConfig
 }
