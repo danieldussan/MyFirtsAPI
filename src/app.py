@@ -65,10 +65,10 @@ def registrar_usuario():
         else:
             cursor = conexion.connection.cursor()
             sql = """INSERT INTO usuarios (documento, nombre, apellido, carrera) 
-                     VALUES('{0}', '{1}', '{2}', '{3}')""".format(
-                    consulta['documento'], consulta['nombre'], consulta['apellido'], consulta['carrera'])
-            cursor.execute(sql)
-            conexion.connection.commit()  # Para confirmar la acción de inserción
+                    VALUES(%s, %s, %s, %s)"""
+            valores = (consulta['documento'], consulta['nombre'], consulta['apellido'], consulta['carrera'])
+            cursor.execute(sql, valores)
+            conexion.connection.commit()
             return jsonify({'mensaje': "Usuario registrado"}), 200
     except Exception as ex:
         return jsonify({'mensaje': f"Error: {ex}"}), 500
