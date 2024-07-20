@@ -1,14 +1,21 @@
+import os
 from flask import Flask, jsonify, request
 import pymysql
 from flask_cors import CORS
-from config import config
+from dotenv import load_dotenv
+
+# Cargar variables de entorno
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
 app.secret_key = "mysecretkey"
 
-# Cargar configuración
-app.config.from_object(config['Development'])
+# Configuración directamente en el archivo
+app.config['MYSQL_HOST'] = os.getenv('MYSQL_HOST')
+app.config['MYSQL_USER'] = os.getenv('MYSQL_USER')
+app.config['MYSQL_PASSWORD'] = os.getenv('MYSQL_PASSWORD')
+app.config['MYSQL_DB'] = os.getenv('MYSQL_DB')
 
 def get_db_connection():
     try:
@@ -17,7 +24,6 @@ def get_db_connection():
             user=app.config['MYSQL_USER'],
             password=app.config['MYSQL_PASSWORD'],
             db=app.config['MYSQL_DB'],
-            port=app.config['MYSQL_PORT'],
             cursorclass=pymysql.cursors.DictCursor
         )
         return connection
@@ -25,9 +31,6 @@ def get_db_connection():
         app.logger.error(f"Error in get_db_connection: {ex}")
         raise
 
-#############################################################
-# PARA CONSULTAR TODOS DATOS DE LA BASE DE DATOS DE UNA TABLA #
-#############################################################
 @app.route('/getusers', methods=['GET'])
 def get_all():
     try:
@@ -36,26 +39,19 @@ def get_all():
         sql = 'SELECT * FROM users'
         cursor.execute(sql)
         datos = cursor.fetchall()
-        usuarios = []
-        for fila in datos:
-            usuario = {'documento': fila['documento'], 'nombre': fila['nombre'], 'apellido': fila['apellido'], 'carrera': fila['carrera']}
-            usuarios.append(usuario)
+        usuarios = [{'documento': fila['documento'], 'nombre': fila['nombre'], 'apellido': fila['apellido'], 'carrera': fila['carrera']} for fila in datos]
         connection.close()
         return jsonify({'usuarios': usuarios, 'mensaje': "Usuarios listados"})
     except Exception as ex:
         return jsonify({'mensaje': f"Error al listar usuarios, error: {ex}"}), 500
 
-##########################################################
-# PARA CONSULTAR DATOS A LA BASE DE DATOS CON UN PARAMETRO #
-##########################################################
 @app.route('/usuario/<documento>', methods=['GET'])
 def leer_usuario(documento):
     try:
         connection = get_db_connection()
         cursor = connection.cursor()
         sql = "SELECT * FROM users WHERE documento = %s"
-        valores = (documento,)
-        cursor.execute(sql, valores)
+        cursor.execute(sql, (documento,))
         datos = cursor.fetchone()
         connection.close()
         if datos:
@@ -66,51 +62,37 @@ def leer_usuario(documento):
     except Exception as ex:
         return jsonify({'mensaje': f"Error al listar usuarios por documento, error: {ex}"}), 500
 
-#########################################
-# PARA INSERTAR DATOS A LA BASE DE DATOS #
-#########################################
 @app.route('/usuario', methods=['POST'])
 def registrar_usuario():
     try:
         consulta = request.json
         documento = consulta.get('documento')
-        resultado = verificar_usuario_existe(documento)
-        if resultado:
+        if verificar_usuario_existe(documento):
             return jsonify({'mensaje': f"El documento '{documento}' ya existe en la base de datos."}), 400
-        else:
-            connection = get_db_connection()
-            cursor = connection.cursor()
-            sql = """INSERT INTO users (documento, nombre, apellido, carrera) 
-                     VALUES (%s, %s, %s, %s)"""
-            valores = (consulta['documento'], consulta['nombre'], consulta['apellido'], consulta['carrera'])
-            cursor.execute(sql, valores)
-            connection.commit()
-            connection.close()
-            return jsonify({'mensaje': "Usuario registrado"}), 200
+        connection = get_db_connection()
+        cursor = connection.cursor()
+        sql = "INSERT INTO users (documento, nombre, apellido, carrera) VALUES (%s, %s, %s, %s)"
+        cursor.execute(sql, (consulta['documento'], consulta['nombre'], consulta['apellido'], consulta['carrera']))
+        connection.commit()
+        connection.close()
+        return jsonify({'mensaje': "Usuario registrado"}), 200
     except Exception as ex:
         return jsonify({'mensaje': f"Error: {ex}"}), 500
 
-#############################################################
-# PARA ACTUALIZAR UN REGISTRO DE UNA TABLA DE LA BD #
-#############################################################
 @app.route('/usuario/<documento>', methods=['PUT'])
 def actualizar_usuario(documento):
     try:
         consulta = request.json
         connection = get_db_connection()
         cursor = connection.cursor()
-        sql = """UPDATE users SET nombre = %s, apellido = %s, carrera = %s WHERE documento = %s"""
-        valores = (consulta['nombre'], consulta['apellido'], consulta['carrera'], documento)
-        cursor.execute(sql, valores)
+        sql = "UPDATE users SET nombre = %s, apellido = %s, carrera = %s WHERE documento = %s"
+        cursor.execute(sql, (consulta['nombre'], consulta['apellido'], consulta['carrera'], documento))
         connection.commit()
         connection.close()
         return jsonify({'mensaje': "Usuario actualizado"}), 200
     except Exception as ex:
         return jsonify({'mensaje': f"Error: {ex}"}), 500
 
-#############################################################
-# PARA ELIMINAR UN REGISTRO DE UNA TABLA DE LA BD #
-#############################################################
 @app.route('/usuario/<documento>', methods=['DELETE'])
 def eliminar_usuario(documento):
     try:
@@ -124,9 +106,6 @@ def eliminar_usuario(documento):
     except Exception as ex:
         return jsonify({'mensaje': f"Error al eliminar registro: {ex}"}), 500
 
-##########################################################
-# FUNCION PARA SABER SI EL USUARIO ESTA EN LA BD #
-##########################################################
 def verificar_usuario_existe(documento):
     try:
         connection = get_db_connection()
@@ -148,9 +127,6 @@ def send_dato():
         print(e)
         return jsonify({"informacion": str(e)}), 500
 
-##########################################################
-# PAGINA DE ERROR POR DEFECTO #
-##########################################################
 def page_not_found(error):
     return "<h1>Pagina no encontrada</h1>", 404
 
