@@ -79,7 +79,7 @@ def registrar_usuario():
         else:
             connection = get_db_connection()
             cursor = connection.cursor()
-            sql = """INSERT INTO usuarios (documento, nombre, apellido, carrera) 
+            sql = """INSERT INTO users (documento, nombre, apellido, carrera) 
                      VALUES (%s, %s, %s, %s)"""
             valores = (consulta['documento'], consulta['nombre'], consulta['apellido'], consulta['carrera'])
             cursor.execute(sql, valores)
@@ -98,7 +98,7 @@ def actualizar_usuario(documento):
         consulta = request.json
         connection = get_db_connection()
         cursor = connection.cursor()
-        sql = """UPDATE usuarios SET nombre = %s, apellido = %s, carrera = %s WHERE documento = %s"""
+        sql = """UPDATE users SET nombre = %s, apellido = %s, carrera = %s WHERE documento = %s"""
         valores = (consulta['nombre'], consulta['apellido'], consulta['carrera'], documento)
         cursor.execute(sql, valores)
         connection.commit()
@@ -115,7 +115,7 @@ def eliminar_usuario(documento):
     try:
         connection = get_db_connection()
         cursor = connection.cursor()
-        sql = "DELETE FROM usuarios WHERE documento = %s"
+        sql = "DELETE FROM users WHERE documento = %s"
         cursor.execute(sql, (documento,))
         connection.commit()
         connection.close()
@@ -130,7 +130,7 @@ def verificar_usuario_existe(documento):
     try:
         connection = get_db_connection()
         cursor = connection.cursor()
-        sql_consulta = "SELECT documento FROM usuarios WHERE documento = %s"
+        sql_consulta = "SELECT documento FROM users WHERE documento = %s"
         cursor.execute(sql_consulta, (documento,))
         resultado = cursor.fetchone()
         connection.close()
