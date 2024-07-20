@@ -17,6 +17,7 @@ def get_db_connection():
             user=app.config['MYSQL_USER'],
             password=app.config['MYSQL_PASSWORD'],
             db=app.config['MYSQL_DB'],
+            port=app.config['MYSQL_PORT'],
             cursorclass=pymysql.cursors.DictCursor
         )
         return connection
