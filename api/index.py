@@ -1,32 +1,38 @@
 from flask import Flask, jsonify, request
 import pymysql
 from flask_cors import CORS
-from config import Config
+from config import config
 
 app = Flask(__name__)
 CORS(app)
+app.secret_key = "mysecretkey"
+
+# Cargar configuración
+app.config.from_object(config['Development'])
 
 def get_db_connection():
-    connection = pymysql.connect(
-        host=Config.MYSQL_HOST,
-        user=Config.MYSQL_USER,
-        password=Config.MYSQL_PASSWORD,
-        db=Config.MYSQL_DB,
-        cursorclass=pymysql.cursors.DictCursor
-    )
-    return connection
-
-app.secret_key = "mysecretkey"
+    try:
+        connection = pymysql.connect(
+            host=app.config['MYSQL_HOST'],
+            user=app.config['MYSQL_USER'],
+            password=app.config['MYSQL_PASSWORD'],
+            db=app.config['MYSQL_DB'],
+            cursorclass=pymysql.cursors.DictCursor
+        )
+        return connection
+    except Exception as ex:
+        app.logger.error(f"Error in get_db_connection: {ex}")
+        raise
 
 #############################################################
 # PARA CONSULTAR TODOS DATOS DE LA BASE DE DATOS DE UNA TABLA #
 #############################################################
-@app.route('/usuario', methods=['GET'])
+@app.route('/getusers', methods=['GET'])
 def get_all():
     try:
         connection = get_db_connection()
         cursor = connection.cursor()
-        sql = 'SELECT * FROM usuarios'
+        sql = 'SELECT * FROM users'
         cursor.execute(sql)
         datos = cursor.fetchall()
         usuarios = []
@@ -36,7 +42,7 @@ def get_all():
         connection.close()
         return jsonify({'usuarios': usuarios, 'mensaje': "Usuarios listados"})
     except Exception as ex:
-        return jsonify({'mensaje': "Error al listar usuarios"}), 500
+        return jsonify({'mensaje': f"Error al listar usuarios, error: {ex}"}), 500
 
 ##########################################################
 # PARA CONSULTAR DATOS A LA BASE DE DATOS CON UN PARAMETRO #
@@ -46,7 +52,7 @@ def leer_usuario(documento):
     try:
         connection = get_db_connection()
         cursor = connection.cursor()
-        sql = "SELECT * FROM usuarios WHERE documento = %s"
+        sql = "SELECT * FROM users WHERE documento = %s"
         valores = (documento,)
         cursor.execute(sql, valores)
         datos = cursor.fetchone()
@@ -148,6 +154,5 @@ def page_not_found(error):
     return "<h1>Pagina no encontrada</h1>", 404
 
 if __name__ == '__main__':
-    app.config.from_object(Config)
     app.register_error_handler(404, page_not_found)
     app.run(host='0.0.0.0')
